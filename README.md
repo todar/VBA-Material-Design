@@ -1,7 +1,9 @@
 # VBA-Materialize (Currently in build status)
 Two Class modules that are used to format a VBA Userform in a similar style as materialize css. 
 
-![]("/materialize.PNG")
+![materialize](https://github.com/todar/VBA-Materialize/blob/master/materialize.JPG "Userform Image")
+
+
 
 Example calling the class module from a userform:
 
