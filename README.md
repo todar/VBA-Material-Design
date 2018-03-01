@@ -1,5 +1,4 @@
 # VBA-Materialize (Currently in build status)
---------------
 
 ![Codeship](https://img.shields.io/codeship/d6c1ddd0-16a3-0132-5f85-2e35c05e22b1.svg)
 [![license](https://img.shields.io/github/license/electron-userland/electron-forge.svg)](https://github.com/todar/VBA-Materialize/blob/master/LICENSE)
