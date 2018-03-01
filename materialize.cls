@@ -16,19 +16,41 @@ Attribute pForm.VB_VarHelpID = -1
 Private mzEvents() As New materializeEvents 'CUSTOM EVENT HANDLER
 Attribute mzEvents.VB_VarHelpID = -1
 
-
 'VARIABLES
 Private pTxtGroup As New Collection 'STORES COLLECTIONS, THAT ARE THE GROUPS OF CONTROLS
 Private pBtnGroup As New Collection 'STORES COLLECTIONS, THAT ARE THE GROUPS OF CONTROLS
 
-
 'SETTINGS
-Private Const FontReduce As Double = 4
+Public pFoucusColor As Long
+Public pBtnColor As Long
+Public pBtnHoverColor As Long
+Public pBorderColor As Long
+Public pLabelColor As Long
+Public pWarningColor As Long
+Public pSuccessColor As Long
+
+Public onButton As Boolean 'BOOLEAN TO LIMIT WHEN A LOOP IS NEEDED (HELPS PERFORMANCE)
+Private Const FontSizeReduce As Double = 4
+Private Const FontPosIncrement As Double = 15
+Private Const BorderLocation As Double = 7
+Private Const pFramesPerSec As Double = 13
+Private Const pAnimationSec As Double = 0.01
 
 'TODO:
-' - THIS WAS THE TESTING STAGE. CURRENTLY NEED TO GO BACK AND CLEAN UP CODE QUITE A BIT.
+' - THIS IS THE TESTING STAGE. CURRENTLY NEED TO GO BACK AND CLEAN UP CODE QUITE A BIT.
 ' - ADD MORE ERROR HANDLING.
+' - MAKE SEVERAL VARIABLES GLOBAL CONSTANTS(COLORS, FONT SIZE) TO MAKE IT EASIER TO CHANGE.
 
+
+Private Sub Class_Initialize()
+    pFoucusColor = mzteal
+    pBorderColor = mzGreyLighten2
+    pLabelColor = mzGrey
+    pWarningColor = mzRedAccent1
+    pSuccessColor = mzGreenLighten1
+    pBtnColor = mzteal
+    pBtnHoverColor = mzTealLighten1
+End Sub
 
 
 '==============================================================
@@ -42,6 +64,7 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     Dim frm As MSForms.frame
     
     Set pForm = txt.Parent
+    
     Set lbl = txt.Parent.Controls.Add("Forms.Label.1", "lbl" & txt.Name)
     Set frm = txt.Parent.Controls.Add("Forms.Frame.1", "frm" & txt.Name)
     
@@ -60,8 +83,8 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
         .borderStyle = fmBorderStyleNone
         .Left = txt.Left + 8
         .tabStop = False
-        .Top = txt.Top + txt.Height + 5
-        .BackColor = bargray
+        .Top = txt.Top + txt.Height + BorderLocation
+        .BackColor = pBorderColor
         .Height = 1
     End With
     
@@ -74,7 +97,7 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
         .Caption = placeholder
         .MousePointer = fmMousePointerIBeam
         .Left = txt.Left + 8
-        .ForeColor = pgray
+        .ForeColor = pLabelColor
         .Top = txt.Top
         .Font.SIZE = txt.Font.SIZE
     End With
@@ -105,6 +128,11 @@ Public Sub Button(btn As MSForms.CommandButton)
     Dim mz As New Collection
     
     ArrayIncDim mzEvents
+    With btn
+        btn.BackColor = pBtnColor
+        btn.ForeColor = mzWhite
+    End With
+    
     
     Set mzEvents(UBound(mzEvents, 1)).mz = Me
     Set mzEvents(UBound(mzEvents, 1)).btn = btn
@@ -120,19 +148,29 @@ Public Sub BtnHover(Optional btnName As String)
     Dim i As Integer
     Dim mz As Collection
     
-    For i = 1 To pBtnGroup.Count
-        Set mz = pBtnGroup(i)
-        
-        If mz("btn").Name = btnName Then
-            mz("btn").BackColor = 11385643
-        Else
-            mz("btn").BackColor = 10135078
-        End If
-        
-    Next i
+    DoEvents 'ONLY LOOP IF MOUSE OVER BUTTON
+    If onButton = True Then
+        For i = 1 To pBtnGroup.Count
+            Set mz = pBtnGroup(i)
+            
+            'HOVER
+            If mz("btn").Name = btnName Then
+                mz("btn").BackColor = pBtnHoverColor
+            
+            'DEFAULT
+            Else
+                mz("btn").BackColor = pBtnColor
+            End If
+            
+        Next i
+    End If
     
 End Sub
 
+
+'============================================================================================
+' SETTING FOCUS TO A TEXTBOX - CALLS FOR ANIMATIONS, AS WELL AS DOUBLE CHECKS FORMATING
+'============================================================================================
 Public Sub setFocus(txt As String)
     
     Dim i As Integer
@@ -153,31 +191,31 @@ Public Sub setFocus(txt As String)
             'ADD TO FOCUS GROUP
             obj.Add mz("lbl")
             Properties.Add "top"
-            Increment.Add -15
+            Increment.Add (FontPosIncrement * -1)
             
             'FONT SIZE
             obj.Add mz("lbl")
             Properties.Add "fontsize"
-            Increment.Add -3
+            Increment.Add (FontSizeReduce * -1)
             
         ElseIf mz("txt").value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").Name <> txt Then
             
             'ADD TO LOOSE FOUCUS GROUP
             obj.Add mz("lbl")
             Properties.Add "top"
-            Increment.Add 15
+            Increment.Add FontPosIncrement
             
            'FONT SIZE
             obj.Add mz("lbl")
             Properties.Add "fontsize"
-            Increment.Add 3
+            Increment.Add FontSizeReduce
             
         End If
         
     Next i
     
     If obj.Count > 0 Then
-        Animation obj, Properties, Increment, 13, 0.02
+        Animation obj, Properties, Increment, pFramesPerSec, pAnimationSec
     End If
     
     checkFormat txt
@@ -186,6 +224,10 @@ catch:
     
 End Sub
 
+'==========================================================================================
+' LABEL SIZE IS NOT ALWAYS ACCURATE, SO THIS WILL DOUBLE CHECK THE CORRECT SIZE.
+' ALSO HIGHLIGHTS THE BOTTOM BORDER(FRAME) (DOES VALIDATION AS WELL FOR NON CURRENT TXTBOX)
+'==========================================================================================
 Public Function checkFormat(Optional curTxtName As String) As Boolean
     
     Dim i As Integer
@@ -206,34 +248,34 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
         
         'FORMAT
         If txt.Name = curTxtName Then
-            lbl.Top = txt.Top - 15
-            lbl.Font.SIZE = txt.Font.SIZE - 3
-            lbl.ForeColor = pteal
+            lbl.Top = txt.Top - FontPosIncrement
+            lbl.Font.SIZE = txt.Font.SIZE - FontSizeReduce
+            lbl.ForeColor = pFoucusColor
             frm.Height = 2
-            If txt.value = "" Then frm.BackColor = pteal
+            If txt.value = "" Then frm.BackColor = pFoucusColor
             
         ElseIf txt.value = "" Then
             lbl.Top = txt.Top
             lbl.Font.SIZE = txt.Font.SIZE
-            lbl.ForeColor = pgray
+            lbl.ForeColor = pLabelColor
             frm.Height = 1
-            frm.BackColor = bargray
+            frm.BackColor = pBorderColor
 
         Else
         
             If lbl.Top = txt.Top Then
-                lbl.Top = txt.Top - 15
-                lbl.Font.SIZE = txt.Font.SIZE - 3
+                lbl.Top = txt.Top - FontPosIncrement
+                lbl.Font.SIZE = txt.Font.SIZE - FontSizeReduce
             End If
             
-            lbl.ForeColor = pgray
+            lbl.ForeColor = pLabelColor
             
             If Val <> "" And Trim(txt.value) <> "" Then
             'CHECK TO SEE IF IT IS OK TO VALIDATE
                 If regularExpressionExists(Trim(txt.value), Val) = True Then
-                    frm.BackColor = PGREEN 'VALID
+                    frm.BackColor = pSuccessColor 'VALID
                 Else
-                    frm.BackColor = pred 'INVALID, RETURN FALSE
+                    frm.BackColor = pWarningColor 'INVALID, RETURN FALSE
                 End If
 
                 frm.Height = 2
@@ -245,9 +287,9 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
         
         Else
             If txt.Name = curTxtName Then
-                frm.BackColor = bargray
+                frm.BackColor = pBorderColor
             Else
-                frm.BackColor = pteal
+                frm.BackColor = pFoucusColor
             End If
         End If
         
@@ -258,6 +300,9 @@ Nxt:
     
 End Function
 
+'==========================================================================================
+' VALIDATES ALL THE FIEDLS THAT HAD A REG EXPRESSION PASSED IN IT
+'==========================================================================================
 Public Function Validate(Optional markEmpty As Boolean) As Boolean
 
     Dim i As Integer
@@ -281,9 +326,9 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
 
                 'VALIDATE
                 If regularExpressionExists(Trim(txt.value), Val) = True Then
-                    frm.BackColor = PGREEN 'VALID
+                    frm.BackColor = pSuccessColor 'VALID
                 Else
-                    frm.BackColor = pred 'INVALID, RETURN FALSE
+                    frm.BackColor = pWarningColor 'INVALID, RETURN FALSE
                     Validate = False
                 End If
 
@@ -292,7 +337,7 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
             Else
 
                 'VALUE IS "", SO THEREFORE NOT VALID
-                If markEmpty = True Then frm.BackColor = pred
+                If markEmpty = True Then frm.BackColor = pWarningColor
                 Validate = False
             End If
 
@@ -348,13 +393,15 @@ sec As Double)
         
     Next i
     
-    
 End Function
+
 
 Private Sub pForm_Click()
     checkFormat
 End Sub
 
+
 Private Sub pForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
     BtnHover
+    onButton = False
 End Sub
