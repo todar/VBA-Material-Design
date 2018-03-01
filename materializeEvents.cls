@@ -28,6 +28,7 @@ Private Sub btn_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Int
 End Sub
 
 Private Sub btn_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    mz.onButton = True
     mz.BtnHover btn.Name
 End Sub
 
