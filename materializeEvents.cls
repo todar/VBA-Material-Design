@@ -32,6 +32,13 @@ Private Sub btn_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal
     mz.BtnHover btn.Name
 End Sub
 
+Private Sub lbl_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+      On Error GoTo catch
+    txt.setFocus
+    mz.setFocus txt.Name
+catch:
+End Sub
+
 Private Sub txt_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
     
     If KeyCode <> vbKeyTab And KeyCode <> vbKeyReturn Then
@@ -43,7 +50,7 @@ End Sub
 
 Private Sub txt_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
     If KeyCode = vbKeyTab Or KeyCode = vbKeyReturn Then
-        mz.Validate
+        If mz.liveValidation = True Then mz.Validate
         txt.setFocus
         mz.setFocus txt.Name
     End If
@@ -53,8 +60,5 @@ Private Sub txt_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal
     mz.setFocus txt.Name
 End Sub
 Private Sub lbl_Click()
-    On Error GoTo catch
-    txt.setFocus
-    mz.setFocus txt.Name
-catch:
+  
 End Sub

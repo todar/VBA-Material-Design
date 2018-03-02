@@ -30,11 +30,12 @@ Public pWarningColor As Long
 Public pSuccessColor As Long
 
 Public onButton As Boolean 'BOOLEAN TO LIMIT WHEN A LOOP IS NEEDED (HELPS PERFORMANCE)
+Public liveValidation As Boolean
 Private Const FontSizeReduce As Double = 4
 Private Const FontPosIncrement As Double = 15
 Private Const BorderLocation As Double = 7
-Private Const pFramesPerSec As Double = 13
-Private Const pAnimationSec As Double = 0.01
+Private Const pFramesPerSec As Double = 10 '13
+Private Const pAnimationSec As Double = 0.01 '0.01
 
 'TODO:
 ' - THIS IS THE TESTING STAGE. CURRENTLY NEED TO GO BACK AND CLEAN UP CODE QUITE A BIT.
@@ -46,7 +47,7 @@ Private Sub Class_Initialize()
     pFoucusColor = mzteal
     pBorderColor = mzGreyLighten2
     pLabelColor = mzGrey
-    pWarningColor = mzRedAccent1
+    pWarningColor = mzRedLighten1
     pSuccessColor = mzGreenLighten1
     pBtnColor = mzteal
     pBtnHoverColor = mzTealLighten1
@@ -119,6 +120,60 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     pTxtGroup.Add mz, txt.Name
     
 End Sub
+
+Public Function DropDown(lbl As MSForms.Label, placeholder As String, Options As Variant)
+    
+    Dim pfrm As MSForms.frame
+    Dim plbl As MSForms.Label
+     
+    'CREATE BAR AND PLACEHOLDER
+    Set pfrm = lbl.Parent.Controls.Add("Forms.Frame.1", "frm" & lbl.Name)
+    Set plbl = lbl.Parent.Controls.Add("Forms.Label.1", "lbl" & lbl.Name)
+    
+    'ADD A BOTTOM BORDER
+    With pfrm
+        .Width = lbl.Width
+        .borderStyle = fmBorderStyleSingle
+        .borderStyle = fmBorderStyleNone
+        .Left = lbl.Left + 8
+        .tabStop = False
+        .Top = lbl.Top + lbl.Height + BorderLocation
+        .BackColor = pBorderColor
+        .Height = 1
+    End With
+    
+    'ADD A PLACEHOLDER
+    With plbl
+        .Height = lbl.Height
+        .Width = lbl.Width
+        .borderStyle = fmBorderStyleNone
+        .BackStyle = fmBackStyleTransparent
+        .Caption = placeholder
+        .MousePointer = fmMousePointerIBeam
+        .Left = lbl.Left + 8
+        .ForeColor = pLabelColor
+        .Top = lbl.Top - FontPosIncrement
+        .Font.SIZE = lbl.Font.SIZE - FontSizeReduce
+    End With
+    
+    With lbl
+        .BackStyle = fmBackStyleTransparent
+        .borderStyle = fmBorderStyleNone
+        .Left = .Left + 7.5
+        .Caption = "Choose your option"
+    End With
+    
+'    Set plbl = lbl
+'    If IsArrayEmpty(pDropDown) Then
+'        ReDim pDropDown(0)
+'    Else
+'        ReDim Preserve pDropDown(UBound(pDropDown, 1) + 1)
+'    End If
+'
+'    pDropDown(UBound(pDropDown, 1)).Init lbl, Options, pfrm, pThemeColor
+'
+    
+End Function
 
 '==============================================================
 ' STYLE AND SET UP A BUTTON
@@ -198,6 +253,9 @@ Public Sub setFocus(txt As String)
             Properties.Add "fontsize"
             Increment.Add (FontSizeReduce * -1)
             
+            '@@@@@
+            mz("frm").BackColor = pFoucusColor
+            
         ElseIf mz("txt").value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").Name <> txt Then
             
             'ADD TO LOOSE FOUCUS GROUP
@@ -209,6 +267,9 @@ Public Sub setFocus(txt As String)
             obj.Add mz("lbl")
             Properties.Add "fontsize"
             Increment.Add FontSizeReduce
+            
+            '@@@@@
+            mz("frm").BackColor = pBorderColor
             
         End If
         
@@ -270,7 +331,8 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
             
             lbl.ForeColor = pLabelColor
             
-            If Val <> "" And Trim(txt.value) <> "" Then
+            
+            If Val <> "" And Trim(txt.value) <> "" And liveValidation Then
             'CHECK TO SEE IF IT IS OK TO VALIDATE
                 If regularExpressionExists(Trim(txt.value), Val) = True Then
                     frm.BackColor = pSuccessColor 'VALID
@@ -279,7 +341,11 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
                 End If
 
                 frm.Height = 2
+            Else
+                frm.Height = 1
+                frm.BackColor = pBorderColor
             End If
+            
         End If
         
         'BOTTOM BORDER COLOR (FRAME)
@@ -309,7 +375,8 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
     Dim txt As MSForms.TextBox
     Dim frm As MSForms.frame
     Dim Val As String
-
+    
+    liveValidation = True
     Validate = True
     
     For i = 1 To pTxtGroup.Count
@@ -368,8 +435,9 @@ sec As Double)
     Increment = cArray(mzIncrement)
     
     'CALCULATE INCREMENT STEPS/TIME STEPS
-    sec = (sec * 1000) / framesPerSec
-    
+    sec = (sec * 1000)
+    sec = sec / framesPerSec
+  
     For i = 1 To framesPerSec
         
         DoEvents
@@ -387,11 +455,12 @@ sec As Double)
             
         Next n
         
-        
         'API SLEEP FUNCTION (MILLISECONDS)
         Sleep sec
         
     Next i
+
+    
     
 End Function
 
