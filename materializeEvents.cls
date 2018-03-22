@@ -19,6 +19,8 @@ Public WithEvents lbl As MSForms.Label
 Attribute lbl.VB_VarHelpID = -1
 Public WithEvents btn As MSForms.CommandButton
 Attribute btn.VB_VarHelpID = -1
+Public WithEvents cmb As MSForms.ComboBox
+Attribute cmb.VB_VarHelpID = -1
 
 
 Private Sub btn_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
@@ -32,8 +34,14 @@ Private Sub btn_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal
     mz.BtnHover btn.Name
 End Sub
 
+
+Private Sub cmb_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    cmb.DropDown
+End Sub
+
+
 Private Sub lbl_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-      On Error GoTo catch
+    On Error GoTo catch
     txt.setFocus
     mz.setFocus txt.Name
 catch:
@@ -59,6 +67,19 @@ End Sub
 Private Sub txt_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
     mz.setFocus txt.Name
 End Sub
-Private Sub lbl_Click()
-  
+
+
+Private Sub cmb_Change()
+    Dim ctrl As MSForms.Control
+    
+    If cmb.Value <> "" Then
+        For Each ctrl In cmb.Parent.Controls
+            If ctrl.tabIndex = cmb.tabIndex + 1 Then
+                ctrl.setFocus
+                mz.setFocus ctrl.Name
+                Exit For
+            End If
+        Next ctrl
+    End If
+    
 End Sub
