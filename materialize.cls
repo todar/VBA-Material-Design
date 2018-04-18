@@ -10,6 +10,13 @@ Attribute VB_Exposed = False
 Option Explicit
 Option Compare Text
 
+'API FOR PAUSING CODE (USED FOR ANIMATION)
+#If VBA7 And Win64 Then
+    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+#Else
+    Private Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+#End If
+
 'EVENT HANDLERS
 Private WithEvents pForm As MSForms.UserForm
 Attribute pForm.VB_VarHelpID = -1
@@ -40,7 +47,7 @@ Private Const mzPaddingOffset As Integer = 8 'ADD OFFSET TO CONTROLS DUE TO TEXT
 
 
 'NOTES:
-' - THIS CLASS IS USED TO EASILY FORMAT USERFORMS, AND ADD VALIDATION using .
+' - THIS CLASS IS USED TO EASILY FORMAT USERFORMS, AND ADD VALIDATION USING REGEXP .
 ' - THIS CLASS HEAVILY RELIES ON ITS SIBILING CLASS, materializeEvents
 ' - THE LOOK AND FUNCTION OF THIS IS BASED ON THE MATERIALIZECSS FRAMEWORK THAT IS
 '   USED FOR WEBSITES: http://materializecss.com/  (SEE THE SECTION ON FORMS)
@@ -51,8 +58,7 @@ Private Const mzPaddingOffset As Integer = 8 'ADD OFFSET TO CONTROLS DUE TO TEXT
 '   ADD MORE ERROR HANDLING.
 ' - CLEAN UP THE WAY VALIDATE WORKS. CHECKFORMAT & VALIDATE ARE A BIT REPETITIVE.
 ' - SHOULD SEPERATE BORDER, AND PLACEHODER INTO THEIR OWN FUNCTIONS. REPETITIVE CODE.
-' - CURRENTLY, REGEX ARE PASSED AS PARAMETERS. NEED TO SET UP TO
-'   USE FORMVALIDATION ENUM/VALIDATIONRETURN INSTEAD
+
 
 'Funtions:
 ' - TextBox:        formats a textbox, adds it to the ptextgroup
@@ -64,6 +70,268 @@ Private Const mzPaddingOffset As Integer = 8 'ADD OFFSET TO CONTROLS DUE TO TEXT
 ' - resetForm:
 ' - toast:          @TODO - work in progress... A temporary dialog.
 
+
+Public Enum mzColors
+
+    mzRedLighten5 = 15657983
+    mzRedLighten4 = 13815295
+    mzRedLighten3 = 10132207
+    mzRedLighten2 = 7566309
+    mzRedLighten1 = 5264367
+    mzred = 3556340
+    mzRedDarken1 = 3488229
+    mzRedDarken2 = 3092435
+    mzRedDarken3 = 2631878
+    mzRedDarken4 = 1842359
+    mzRedAccent1 = 8424191
+    mzRedAccent2 = 5395199
+    mzRedAccent3 = 4462591
+    mzRedAccent4 = 213
+    mzPinkLighten5 = 15525116
+    mzPinkLighten4 = 13679608
+    mzPinkLighten3 = 11636724
+    mzPinkLighten2 = 9593584
+    mzPinkLighten1 = 8012012
+    mzPink = 6495977
+    mzPinkDarken1 = 6298584
+    mzPinkDarken2 = 5970114
+    mzPinkDarken3 = 5706925
+    mzPinkDarken4 = 5181064
+    mzPinkAccent1 = 11239679
+    mzPinkAccent2 = 8470783
+    mzPinkAccent3 = 5701877
+    mzPinkAccent4 = 6427077
+    mzPurpleLighten5 = 16115187
+    mzPurpleLighten4 = 15187681
+    mzPurpleLighten3 = 14193614
+    mzPurpleLighten2 = 13134010
+    mzPurpleLighten1 = 12339115
+    mzPurple = 11544476
+    mzPurpleDarken1 = 11150478
+    mzPurpleDarken2 = 10624891
+    mzPurpleDarken3 = 10099562
+    mzPurpleDarken4 = 9180234
+    mzPurpleAccent1 = 16548074
+    mzPurpleAccent2 = 16466144
+    mzPurpleAccent3 = 16318677
+    mzPurpleAccent4 = 16711850
+    mzDeepPurpleLighten5 = 16181229
+    mzDeepPurpleLighten4 = 15320273
+    mzDeepPurpleLighten3 = 14392755
+    mzDeepPurpleLighten2 = 13464981
+    mzDeepPurpleLighten1 = 12736382
+    mzDeepPurple = 12008039
+    mzDeepPurpleDarken1 = 11613534
+    mzDeepPurpleDarken2 = 11021649
+    mzDeepPurpleDarken3 = 10495813
+    mzDeepPurpleDarken4 = 9575217
+    mzDeepPurpleAccent1 = 16746675
+    mzDeepPurpleAccent2 = 16731516
+    mzDeepPurpleAccent3 = 16719717
+    mzDeepPurpleAccent4 = 15335522
+    mzIndigoLighten5 = 16181992
+    mzIndigoLighten4 = 15321797
+    mzIndigoLighten3 = 14330015
+    mzIndigoLighten2 = 13338233
+    mzIndigoLighten1 = 12610396
+    mzIndigo = 11882815
+    mzIndigoDarken1 = 11225401
+    mzIndigoDarken2 = 10436400
+    mzIndigoDarken3 = 9647400
+    mzIndigoDarken4 = 8266522
+    mzIndigoAccent1 = 16752268
+    mzIndigoAccent2 = 16674131
+    mzIndigoAccent3 = 16669245
+    mzIndigoAccent4 = 16666416
+    mzBlueLighten5 = 16642787
+    mzBlueLighten4 = 16506555
+    mzBlueLighten3 = 16370320
+    mzBlueLighten2 = 16168292
+    mzBlueLighten1 = 16098626
+    mzblue = 15963681
+    mzBlueDarken1 = 15042590
+    mzBlueDarken2 = 13792793
+    mzBlueDarken3 = 12608789
+    mzBlueDarken4 = 10569485
+    mzBlueAccent1 = 16757122
+    mzBlueAccent2 = 16747076
+    mzBlueAccent3 = 16742697
+    mzBlueAccent4 = 16736809
+    mzLightBlueLighten5 = 16709089
+    mzLightBlueLighten4 = 16573875
+    mzLightBlueLighten3 = 16438401
+    mzLightBlueLighten2 = 16237391
+    mzLightBlueLighten1 = 16168489
+    mzLightBlue = 16034051
+    mzLightBlueDarken1 = 15047427
+    mzLightBlueDarken2 = 13731842
+    mzLightBlueDarken3 = 12416770
+    mzLightBlueDarken4 = 10180353
+    mzLightBlueAccent1 = 16767104
+    mzLightBlueAccent2 = 16761920
+    mzLightBlueAccent3 = 16756736
+    mzLightBlueAccent4 = 15372544
+    mzCyanLighten5 = 16447456
+    mzCyanLighten4 = 15920050
+    mzCyanLighten3 = 15392384
+    mzCyanLighten2 = 14798925
+    mzCyanLighten1 = 14337574
+    mzCyan = 13941760
+    mzCyanDarken1 = 12692480
+    mzCyanDarken2 = 10983168
+    mzCyanDarken3 = 9405184
+    mzCyanDarken4 = 6578176
+    mzCyanAccent1 = 16777092
+    mzCyanAccent2 = 16776984
+    mzCyanAccent3 = 16770304
+    mzCyanAccent4 = 13940736
+    mzTealLighten5 = 15856352
+    mzTealLighten4 = 14409650
+    mzTealLighten3 = 12897152
+    mzTealLighten2 = 11318861
+    mzTealLighten1 = 10135078
+    mzteal = 8951296
+    mztealHover = 11385643
+    mzTealDarken1 = 8096000
+    mzTealDarken2 = 7043328
+    mzTealDarken3 = 6056192
+    mzTealDarken4 = 4214016
+    mzTealAccent1 = 15466407
+    mzTealAccent2 = 14352228
+    mzTealAccent3 = 11987229
+    mzTealAccent4 = 10862336
+    mzGreenLighten5 = 15332840
+    mzGreenLighten4 = 13231816
+    mzGreenLighten3 = 10999461
+    mzGreenLighten2 = 8701825
+    mzGreenLighten1 = 6994790
+    mzGreen = 5287756
+    mzGreenDarken1 = 4694083
+    mzGreenDarken2 = 3968568
+    mzGreenDarken3 = 3308846
+    mzGreenDarken4 = 2121243
+    mzGreenAccent1 = 13301433
+    mzGreenAccent2 = 11464809
+    mzGreenAccent3 = 7792128
+    mzGreenAccent4 = 5490688
+    mzLightGreenLighten5 = 15333617
+    mzLightGreenLighten4 = 13168092
+    mzLightGreenLighten3 = 10871237
+    mzLightGreenLighten2 = 8508846
+    mzLightGreenLighten1 = 6671516
+    mzLightGreen = 4899723
+    mzLightGreenDarken1 = 4371324
+    mzLightGreenDarken2 = 3710824
+    mzLightGreenDarken3 = 3115861
+    mzLightGreenDarken4 = 1993011
+    mzLightGreenAccent1 = 9502668
+    mzLightGreenAccent2 = 5898162
+    mzLightGreenAccent3 = 262006
+    mzLightGreenAccent4 = 1564004
+    mzLimeLighten5 = 15203321
+    mzLimeLighten4 = 12842224
+    mzLimeLighten3 = 10284774
+    mzLimeLighten2 = 7727068
+    mzLimeLighten1 = 5759444
+    mzLime = 3792077
+    mzLimeDarken1 = 3394240
+    mzLimeDarken2 = 2864303
+    mzLimeDarken3 = 2399646
+    mzLimeDarken4 = 1537922
+    mzLimeAccent1 = 8519668
+    mzLimeAccent2 = 4325358
+    mzLimeAccent3 = 65478
+    mzLimeAccent4 = 60078
+    mzYellowLighten5 = 15203839
+    mzYellowLighten4 = 12909055
+    mzYellowLighten3 = 10352127
+    mzYellowLighten2 = 7795199
+    mzYellowLighten1 = 5828351
+    mzYellow = 3927039
+    mzYellowDarken1 = 3528957
+    mzYellowDarken2 = 2998523
+    mzYellowDarken3 = 2468089
+    mzYellowDarken4 = 1540085
+    mzYellowAccent1 = 9306111
+    mzYellowAccent2 = 65535
+    mzYellowAccent3 = 60159
+    mzYellowAccent4 = 55039
+    mzAmberLighten5 = 14809343
+    mzAmberLighten4 = 11791615
+    mzAmberLighten3 = 8577279
+    mzAmberLighten2 = 5232127
+    mzAmberLighten1 = 2673407
+    mzAmber = 508415
+    mzAmberDarken1 = 46079
+    mzAmberDarken2 = 41215
+    mzAmberDarken3 = 36863
+    mzAmberDarken4 = 28671
+    mzAmberAccent1 = 8381951
+    mzAmberAccent2 = 4249599
+    mzAmberAccent3 = 50431
+    mzAmberAccent4 = 44031
+    mzOrangeLighten5 = 14742527
+    mzOrangeLighten4 = 11723007
+    mzOrangeLighten3 = 8441087
+    mzOrangeLighten2 = 5093375
+    mzOrangeLighten1 = 2533375
+    mzOrange = 39167
+    mzOrangeDarken1 = 36091
+    mzOrangeDarken2 = 31989
+    mzOrangeDarken3 = 27887
+    mzOrangeDarken4 = 20966
+    mzOrangeAccent1 = 8442367
+    mzOrangeAccent2 = 4238335
+    mzOrangeAccent3 = 37375
+    mzOrangeAccent4 = 28159
+    mzDeepOrangeLighten5 = 15198715
+    mzDeepOrangeLighten4 = 12373247
+    mzDeepOrangeLighten3 = 9546751
+    mzDeepOrangeLighten2 = 6654719
+    mzDeepOrangeLighten1 = 4419839
+    mzDeepOrange = 2250751
+    mzDeepOrangeDarken1 = 1987060
+    mzDeepOrangeDarken2 = 1657574
+    mzDeepOrangeDarken3 = 1393624
+    mzDeepOrangeDarken4 = 800447
+    mzDeepOrangeAccent1 = 8429311
+    mzDeepOrangeAccent2 = 4222719
+    mzDeepOrangeAccent3 = 15871
+    mzDeepOrangeAccent4 = 11485
+    mzBrownLighten5 = 15330287
+    mzBrownLighten4 = 13159639
+    mzBrownLighten3 = 10791612
+    mzBrownLighten2 = 8358049
+    mzBrownLighten1 = 6516365
+    mzBrown = 4740473
+    mzBrownDarken1 = 4279405
+    mzBrownDarken2 = 3620957
+    mzBrownDarken3 = 3028046
+    mzBrownDarken4 = 2303806
+    mzGreyLighten5 = 16448250
+    mzGreyLighten4 = 16119285
+    mzGreyLighten3 = 15658734
+    mzGreyLighten2 = 14737632
+    mzGreyLighten1 = 12434877
+    mzGrey = 10395294
+    mzGreyDarken1 = 7697781
+    mzGreyDarken2 = 6381921
+    mzGreyDarken3 = 4342338
+    mzGreyDarken4 = 2171169
+    mzBlueGreyLighten5 = 15855596
+    mzBlueGreyLighten4 = 14473423
+    mzBlueGreyLighten3 = 12959408
+    mzBlueGreyLighten2 = 11445392
+    mzBlueGreyLighten1 = 10260600
+    mzBlueGrey = 9141600
+    mzBlueGreyDarken1 = 8023636
+    mzBlueGreyDarken2 = 6576709
+    mzBlueGreyDarken3 = 5195575
+    mzBlueGreyDarken4 = 3682854
+    mzWhite = 16777215
+    mzblack = 0
+
+End Enum
 
 'FORM ENUM, USED FOR CHOOSING VALIDATION FOR TEXTBOXES
 Public Enum formValidation
@@ -77,6 +345,8 @@ Public Enum formValidation
     mzDate
     mzNumeric
     mzCurrency
+    mzCharactersThenNumbers
+    mzCharacters
 End Enum
 
 'FUNCTION TO RETURN THE REGEX FROM FORMVALIDATION ENUMS
@@ -93,6 +363,8 @@ Function validationReturn(Value As formValidation) As String
         Case mzDate: validationReturn = "^\d{1,2}[\s-\.\/]\d{1,2}[\s-\.\/]\d{2,4}$"
         Case mzNumeric: validationReturn = "^\d+$"
         Case mzCurrency: validationReturn = "^$|\d+"
+        Case mzCharactersThenNumbers: validationReturn = "^[a-zA-Z]+\d+$"
+        Case mzCharacters: validationReturn = "\w+"
     End Select
     
 End Function
@@ -120,7 +392,7 @@ End Sub
 ' - ADDED TO Private Const ptextgroup - THERE IT WILL BE CALLED ON FOR
 '   ANIMATIONS AND VALIDATION
 '*************************************************************************
-Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Validation As String, Optional WarningMessage As String)
+Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Validation As formValidation, Optional WarningMessage As String)
     
     Dim mz As New Collection
     Dim i As Integer
@@ -133,9 +405,9 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     Set pForm = txt.Parent
     
     'ADD NEW CONTROLS TO THE PARENT ELEMENT
-    Set lbl = txt.Parent.Controls.Add("Forms.Label.1", "lbl" & txt.Name)
-    Set frm = txt.Parent.Controls.Add("Forms.Frame.1", "frm" & txt.Name)
-    Set warn = txt.Parent.Controls.Add("Forms.Label.1", "warn" & txt.Name)
+    Set lbl = txt.Parent.Controls.Add("Forms.Label.1", "lbl" & txt.name)
+    Set frm = txt.Parent.Controls.Add("Forms.Frame.1", "frm" & txt.name)
+    Set warn = txt.Parent.Controls.Add("Forms.Label.1", "warn" & txt.name)
     
     'NULL VALUE SO THAT ON FROM THE FORM IN THE EDITOR YOU CAN LABEL EACH TEXTBOX.
     txt.Value = ""
@@ -203,6 +475,8 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     Set mzEvents(UBound(mzEvents, 1)).mz = Me
     Set mzEvents(UBound(mzEvents, 1)).txt = txt
     Set mzEvents(UBound(mzEvents, 1)).lbl = lbl
+    Set mzEvents(UBound(mzEvents, 1)).frm = frm
+    mzEvents(UBound(mzEvents, 1)).controlType = "textbox"
     
     
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -217,11 +491,11 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     mz.Add lbl, "lbl"
     mz.Add frm, "frm"
     mz.Add warn, "warn"
-    mz.Add Validation, "val"
+    mz.Add validationReturn(Validation), "val"
     mz.Add WarningMessage, "warnMsg"
     
     'ADD LOCAL COLLECTION TO MAIN CONTROL GROUP COLLECTION (KEY = NAME OF TEXTBOX)
-    mzTxtGroup.Add mz, txt.Name
+    mzTxtGroup.Add mz, txt.name
     
 End Sub
 
@@ -231,8 +505,8 @@ Public Function DropDown(cmb As MSForms.ComboBox)
     Dim lbl As MSForms.Label
     Dim frm As MSForms.frame
 
-    Set lbl = cmb.Parent.Controls.Add("Forms.Label.1", "lbl" & cmb.Name)
-    Set frm = cmb.Parent.Controls.Add("Forms.Frame.1", "frm" & cmb.Name)
+    Set lbl = cmb.Parent.Controls.Add("Forms.Label.1", "lbl" & cmb.name)
+    Set frm = cmb.Parent.Controls.Add("Forms.Frame.1", "frm" & cmb.name)
     
     'FORMAT CMB
     With cmb
@@ -266,7 +540,7 @@ Public Function DropDown(cmb As MSForms.ComboBox)
         .Left = cmb.Left + mzPaddingOffset
         .ForeColor = mzGrey
         .Top = cmb.Top - mzPlaceholderMaxPosition
-        .Font.Name = cmb.Font.Name
+        .Font.name = cmb.Font.name
         .Font.SIZE = cmb.Font.SIZE - mzFontSizeChange
     End With
     
@@ -275,14 +549,18 @@ Public Function DropDown(cmb As MSForms.ComboBox)
     
     Set mzEvents(UBound(mzEvents, 1)).mz = Me
     Set mzEvents(UBound(mzEvents, 1)).cmb = cmb
+    Set mzEvents(UBound(mzEvents, 1)).lbl = lbl
+    Set mzEvents(UBound(mzEvents, 1)).frm = frm
+    mzEvents(UBound(mzEvents, 1)).controlType = "dropdown"
     
     'ADD GROUP CONTROLS
     mz.Add cmb, "cmb"
+    mz.Add lbl, "lbl"
     mz.Add frm, "frm"
     mz.Add False, "visited"
 
     'ADD GROUP TO MAIN CONTROL GROUP COLLECTION (KEY = NAME OF TEXTBOX)
-    mzCmbGroup.Add mz, cmb.Name
+    mzCmbGroup.Add mz, cmb.name
     
 End Function
 
@@ -306,7 +584,7 @@ Public Sub Button(btn As MSForms.CommandButton)
     
     mz.Add btn, "btn"
     
-    mzBtnGroup.Add mz, btn.Name
+    mzBtnGroup.Add mz, btn.name
     
 End Sub
 Public Sub BtnHover(Optional btnName As String)
@@ -316,11 +594,11 @@ Public Sub BtnHover(Optional btnName As String)
     
     DoEvents 'ONLY LOOP IF MOUSE OVER BUTTON
     If onButton = True Then
-        For i = 1 To mzBtnGroup.Count
+        For i = 1 To mzBtnGroup.count
             Set mz = mzBtnGroup(i)
             
             'HOVER
-            If mz("btn").Name = btnName Then
+            If mz("btn").name = btnName Then
                 mz("btn").BackColor = mzButtonHoverColor
             
             'DEFAULT
@@ -343,15 +621,15 @@ Public Sub setFocus(txt As String)
     
     Dim obj As New Collection
     Dim Properties As New Collection
-    Dim Increment As New Collection
+    Dim increment As New Collection
     
     'IN CASE TEXBOX IS NOT ENABLED
     On Error GoTo catch
     
-    For i = 1 To mzTxtGroup.Count
+    For i = 1 To mzTxtGroup.count
         Set mz = mzTxtGroup(i)
         
-        If mz("txt").Name = txt Then
+        If mz("txt").name = txt Then
             
             
             If mz("lbl").Top = mz("txt").Top Then
@@ -359,26 +637,26 @@ Public Sub setFocus(txt As String)
                 'ADD TO FOCUS GROUP
                 obj.Add mz("lbl")
                 Properties.Add "top"
-                Increment.Add (mzPlaceholderMaxPosition * -1)
+                increment.Add (mzPlaceholderMaxPosition * -1)
                 
                 'ADD TO FONT SIZE GROUP
                 obj.Add mz("lbl")
                 Properties.Add "fontsize"
-                Increment.Add (mzFontSizeChange * -1)
+                increment.Add (mzFontSizeChange * -1)
                 
             End If
             
-        ElseIf mz("txt").Value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").Name <> txt Then
+        ElseIf mz("txt").Value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").name <> txt Then
             
             'ADD TO LOOSE FOUCUS GROUP
             obj.Add mz("lbl")
             Properties.Add "top"
-            Increment.Add mzPlaceholderMaxPosition
+            increment.Add mzPlaceholderMaxPosition
             
            'FONT SIZE
             obj.Add mz("lbl")
             Properties.Add "fontsize"
-            Increment.Add mzFontSizeChange
+            increment.Add mzFontSizeChange
                
             mz("warn") = ""
                
@@ -386,8 +664,8 @@ Public Sub setFocus(txt As String)
         
     Next i
     
-    If obj.Count > 0 Then
-        animation obj, Properties, Increment, mzFramesPerSec, mzAnimationSec
+    If obj.count > 0 Then
+        animation obj, Properties, increment, mzFramesPerSec, mzAnimationSec
     End If
     
     checkFormat txt
@@ -407,21 +685,21 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
     Dim txt As MSForms.TextBox
     Dim frm As MSForms.frame
     Dim lbl As MSForms.Label
-    Dim Val As String
+    Dim val As String
     
     
     'CHECK EACH TEXTBOX
-    For i = 1 To mzTxtGroup.Count
+    For i = 1 To mzTxtGroup.count
         
         On Error GoTo Nxt
         Set txt = mzTxtGroup(i)("txt")
         Set frm = mzTxtGroup(i)("frm")
         Set lbl = mzTxtGroup(i)("lbl")
-        Val = mzTxtGroup(i)("val")
+        val = mzTxtGroup(i)("val")
         
         
         'FORMAT
-        If txt.Name = curTxtName Then
+        If txt.name = curTxtName Then
             lbl.Top = txt.Top - mzPlaceholderMaxPosition
             lbl.Font.SIZE = txt.Font.SIZE - mzFontSizeChange
             lbl.ForeColor = mzFocusColor
@@ -447,9 +725,9 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
             lbl.ForeColor = mzPlaceholderColor
             
             
-            If Val <> "" And Trim(txt.Value) <> "" And liveValidation Then
+            If val <> "" And Trim(txt.Value) <> "" And liveValidation Then
             'CHECK TO SEE IF IT IS OK TO VALIDATE
-                If regularExpressionExists(Trim(txt.Value), Val) = True Then
+                If regularExpressionExists(Trim(txt.Value), val) = True Then
                     frm.BackColor = mzSuccessColor 'VALID
                     mzTxtGroup(i)("warn").Caption = ""
                 Else
@@ -466,10 +744,10 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
         End If
         
         'BOTTOM BORDER COLOR (FRAME)
-        If Val <> "" Then
+        If val <> "" Then
         
         Else
-            If txt.Name = curTxtName Then
+            If txt.name = curTxtName Then
                 frm.BackColor = mzBorderColor
             Else
                 frm.BackColor = mzFocusColor
@@ -486,7 +764,6 @@ Nxt:
 End Function
 
 
-
 '==========================================================================================
 ' VALIDATES ALL THE FIEDLS THAT HAD A REG EXPRESSION PASSED IN IT
 '==========================================================================================
@@ -496,25 +773,25 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
     Dim txt As MSForms.TextBox
     Dim frm As MSForms.frame
     Dim cmb As MSForms.ComboBox
-    Dim Val As String
+    Dim val As String
     Dim visited As Boolean
     
     liveValidation = True
     Validate = True
     
     'VALIDATE TEXTBOX GROUP
-    For i = 1 To mzTxtGroup.Count
+    For i = 1 To mzTxtGroup.count
     
         Set txt = mzTxtGroup(i)("txt")
         Set frm = mzTxtGroup(i)("frm")
-        Val = mzTxtGroup(i)("val")
+        val = mzTxtGroup(i)("val")
         
         If txt.Value <> "" Or markEmpty = True Then
         
-        If Val <> "" Then
+        If val <> "" Then
 
                 'VALIDATE
-                If regularExpressionExists(Trim(txt.Value), Val) = True Then
+                If regularExpressionExists(Trim(txt.Value), val) = True Then
                     frm.BackColor = mzSuccessColor 'VALID
                     mzTxtGroup(i)("warn").Caption = ""
                 Else
@@ -534,7 +811,7 @@ Nxt:
     Next i
     
     'VALIDATE COMBOBOX GROUP
-    For i = 1 To mzCmbGroup.Count
+    For i = 1 To mzCmbGroup.count
         
         Set cmb = mzCmbGroup(i)("cmb")
         Set frm = mzCmbGroup(i)("frm")
@@ -561,18 +838,18 @@ sec As Double)
     
     'Transition obj, arr, 13, 0.2, Inc
     Dim i As Integer
-    Dim n As Integer
+    Dim N As Integer
     Dim currentValue As Double
     Dim obj As Variant
     Dim objProperty As Variant
-    Dim Increment As Variant
+    Dim increment As Variant
     
     Dim Counter As Double
     
     'CONVERT TO ARRAY. THAT WAY COLLECTIONS, ARRAYS, SINGLE PARAMETERS, EXT. CAN ALL BE PASSED IN
     obj = cArray(mzObj)
     objProperty = cArray(mzProperty)
-    Increment = cArray(mzIncrement)
+    increment = cArray(mzIncrement)
     
     'CALCULATE INCREMENT STEPS/TIME STEPS
     sec = (sec * 1000)
@@ -583,17 +860,17 @@ sec As Double)
         DoEvents
         
         'LOOP EACH CONTROL AND INCREMENT ACCORDINGLY
-        For n = LBound(obj, 1) To UBound(obj, 1)
+        For N = LBound(obj, 1) To UBound(obj, 1)
         
             'GET CURRENTVALUE
-            currentValue = CallByName(obj(n), objProperty(n), VbGet)
+            currentValue = CallByName(obj(N), objProperty(N), VbGet)
             
             'INCREMENT PROPERTY VALUE
-            CallByName obj(n), objProperty(n), VbLet, currentValue + Increment(n) / framesPerSec
+            CallByName obj(N), objProperty(N), VbLet, currentValue + increment(N) / framesPerSec
             
-            Counter = Counter + (Increment(n) / framesPerSec)
+            Counter = Counter + (increment(N) / framesPerSec)
             
-        Next n
+        Next N
         
         'API SLEEP FUNCTION (MILLISECONDS)
         Sleep sec
@@ -608,7 +885,7 @@ Private Sub pForm_Click()
 End Sub
 
 
-Private Sub pForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub pForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal Y As Single)
     BtnHover
     onButton = False
 End Sub
@@ -618,11 +895,11 @@ Public Sub resetForm()
         
     Dim i As Integer
     
-    For i = 1 To mzTxtGroup.Count
+    For i = 1 To mzTxtGroup.count
         mzTxtGroup(i)("txt").Value = ""
     Next i
     
-    For i = 1 To mzCmbGroup.Count
+    For i = 1 To mzCmbGroup.count
         'mzCmbGroup(i)("cmb").value = Null
         mzCmbGroup(i)("cmb").ListIndex = 0
         mzCmbGroup(i)("frm").Height = 1
@@ -632,7 +909,7 @@ Public Sub resetForm()
 
 End Sub
 
-Public Sub toast(S As String, mil As Long, form As MSForms.UserForm, bgColor As Long)
+Public Sub toast(s As String, mil As Long, form As MSForms.UserForm, bgColor As Long)
 
     Dim txt As MSForms.TextBox
     Dim L As Long
@@ -641,14 +918,14 @@ Public Sub toast(S As String, mil As Long, form As MSForms.UserForm, bgColor As 
     If running = False Then
         running = True
     
-        Set txt = form.Controls.Add("Forms.Textbox.1", "toast" & S)
+        Set txt = form.Controls.Add("Forms.Textbox.1", "toast" & s)
         
         DoEvents
         With txt
             
             .AutoSize = True
             .SpecialEffect = fmSpecialEffectFlat
-            .Value = S
+            .Value = s
             .MultiLine = True
             .BackColor = bgColor
             .ForeColor = mzWhite
@@ -663,11 +940,163 @@ Public Sub toast(S As String, mil As Long, form As MSForms.UserForm, bgColor As 
         Sleep mil
         
         animation txt, "top", -35, 7, 0.1
-        form.Controls.Remove txt.Name
+        form.Controls.Remove txt.name
         
         running = False
    
     End If
     
 End Sub
+
+
+Public Sub CenterFormToApplication(form)
+
+    With form
+        .StartUpPosition = 0
+        .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
+        .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
+    End With
+
+End Sub
+
+Private Function ArrayIncDim(Arr As Variant) As Variant
+    
+    If IsArrayEmpty(Arr) Then
+        ReDim Arr(0)
+    Else
+        ReDim Preserve Arr(UBound(Arr, 1) + 1)
+    End If
+    
+    ArrayIncDim = Arr
+    
+End Function
+
+
+Private Function IsArrayEmpty(Arr As Variant) As Boolean
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' IsArrayEmpty
+' This function tests whether the array is empty (unallocated). Returns TRUE or FALSE.
+'
+' The VBA IsArray function indicates whether a variable is an array, but it does not
+' distinguish between allocated and unallocated arrays. It will return TRUE for both
+' allocated and unallocated arrays. This function tests whether the array has actually
+' been allocated.
+'
+' This function is really the reverse of IsArrayAllocated.
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    Dim lb As Long
+    Dim ub As Long
+
+    Err.Clear
+    On Error Resume Next
+    If IsArray(Arr) = False Then
+        ' we weren't passed an array, return True
+        IsArrayEmpty = True
+    End If
+
+    ' Attempt to get the UBound of the array. If the array is
+    ' unallocated, an error will occur.
+    ub = UBound(Arr, 1)
+    If (Err.Number <> 0) Then
+        IsArrayEmpty = True
+    Else
+        ''''''''''''''''''''''''''''''''''''''''''
+        ' On rare occasion, under circumstances I
+        ' cannot reliably replicate, Err.Number
+        ' will be 0 for an unallocated, empty array.
+        ' On these occasions, LBound is 0 and
+        ' UBound is -1.
+        ' To accommodate the weird behavior, test to
+        ' see if LB > UB. If so, the array is not
+        ' allocated.
+        ''''''''''''''''''''''''''''''''''''''''''
+        Err.Clear
+        lb = LBound(Arr)
+        If lb > ub Then
+            IsArrayEmpty = True
+        Else
+            IsArrayEmpty = False
+        End If
+    End If
+
+End Function
+
+Private Function regularExpressionExists(TestValue As String, Pattern As String) As Boolean
+    
+    Dim regEx As Object
+    Dim match As Object
+    
+    'CREATE OBJECT
+    Set regEx = CreateObject("vbscript.regexp")
+    
+    'SET PARAMETERS FOR REGULAR EXPRESSION
+    With regEx
+        .Global = True 'TRUE MEANS IT WILL LOOK FOR ALL MATCHES, FALSE FINDS FIRST ONLY
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = Pattern 'SET THE PATTERN THAT WAS PASSED IN
+    End With
+    
+    regularExpressionExists = regEx.Test(TestValue)
+    Set regEx = Nothing
+    
+End Function
+
+'==================================================
+' CONVERT TO ARRAY
+'==================================================
+Private Function cArray(val As Variant) As Variant
+    
+    Dim i As Integer
+    
+    Select Case TypeName(val)
+    
+        Case "Collection":
+            For i = 1 To val.count
+                ArrayPush cArray, val(i)
+            Next i
+        
+        Case "Dictionary":
+            cArray = val.Items()
+        
+        Case Else
+             
+            If IsArray(val) Then
+                cArray = val
+            Else
+                ArrayPush cArray, val
+            End If
+            
+    End Select
+    
+End Function
+
+'==============================================================================================
+' ADDS ELEMENT TO THE END OF A 1 DIM ARRAY - RETURNS NEW LENGHT OF ARRAY **[SINGLE DIMENSION]
+'==============================================================================================
+Private Function ArrayPush(ByRef Arr As Variant, Value As Variant) As Long
+    
+    If IsArrayEmpty(Arr) Then
+        ReDim Arr(0)
+        
+        If IsObject(Value) Then
+            Set Arr(0) = Value
+        Else
+            Arr(0) = Value
+        End If
+        
+    Else
+        ReDim Preserve Arr(LBound(Arr, 1) To UBound(Arr, 1) + 1)
+        
+        If IsObject(Value) Then
+            Set Arr(UBound(Arr, 1)) = Value
+        Else
+            Arr(UBound(Arr, 1)) = Value
+        End If
+    End If
+    
+    ArrayPush = UBound(Arr, 1)
+    
+End Function
 
