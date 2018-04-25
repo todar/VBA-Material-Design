@@ -17,12 +17,12 @@ Private Sub UserForm_Initialize()
     mz.Form Me
     mz.TextBox Textbox1, "Email", mzEmail, "Must be email format"
     mz.TextBox TextBox2, "Pin", mzNumeric, "Must be numeric"
-    mz.Button Me.btnSubmit, mzredlighten1, mzRedAccent2, mzwhite
+    mz.Button btnSubmit, mzredlighten1, mzRedAccent2, mzwhite
 End Sub
 
 Private Sub UserForm_Activate()
     
-    mz.setFocus startTimeframe.name
+    mz.setFocus Textbox1.name
     
 End Sub
 
