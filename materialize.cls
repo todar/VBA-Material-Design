@@ -10,7 +10,6 @@ Attribute VB_Exposed = False
 Option Explicit
 Option Compare Text
 
-'API FOR PAUSING CODE (USED FOR ANIMATION)
 #If VBA7 And Win64 Then
     Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 #Else
@@ -58,7 +57,8 @@ Private Const mzPaddingOffset As Integer = 8 'ADD OFFSET TO CONTROLS DUE TO TEXT
 '   ADD MORE ERROR HANDLING.
 ' - CLEAN UP THE WAY VALIDATE WORKS. CHECKFORMAT & VALIDATE ARE A BIT REPETITIVE.
 ' - SHOULD SEPERATE BORDER, AND PLACEHODER INTO THEIR OWN FUNCTIONS. REPETITIVE CODE.
-
+' - CURRENTLY, REGEX ARE PASSED AS PARAMETERS. NEED TO SET UP TO
+'   USE FORMVALIDATION ENUM/VALIDATIONRETURN INSTEAD
 
 'Funtions:
 ' - TextBox:        formats a textbox, adds it to the ptextgroup
@@ -71,6 +71,23 @@ Private Const mzPaddingOffset As Integer = 8 'ADD OFFSET TO CONTROLS DUE TO TEXT
 ' - toast:          @TODO - work in progress... A temporary dialog.
 
 
+'FORM ENUM, USED FOR CHOOSING VALIDATION FOR TEXTBOXES
+Public Enum formValidation
+    mzNone
+    mzEmail
+    mzOneDigit
+    mzTwoDigits
+    mzThreeDigits
+    mzFourDigits
+    mzYear
+    mzDate
+    mzNumeric
+    mzCurrency
+    mzCharactersThenNumbers
+    mzCharacters
+End Enum
+
+'COLOR ENUM (CAN MOVE THIS TO A MODULE TO USE THE COLORS FOR OTHER THINGS)
 Public Enum mzColors
 
     mzRedLighten5 = 15657983
@@ -333,26 +350,10 @@ Public Enum mzColors
 
 End Enum
 
-'FORM ENUM, USED FOR CHOOSING VALIDATION FOR TEXTBOXES
-Public Enum formValidation
-    mzNone
-    mzEmail
-    mzOneDigit
-    mzTwoDigits
-    mzThreeDigits
-    mzFourDigits
-    mzYear
-    mzDate
-    mzNumeric
-    mzCurrency
-    mzCharactersThenNumbers
-    mzCharacters
-End Enum
-
 'FUNCTION TO RETURN THE REGEX FROM FORMVALIDATION ENUMS
-Function validationReturn(Value As formValidation) As String
+Function validationReturn(value As formValidation) As String
     
-    Select Case Value
+    Select Case value
         Case mzNone: validationReturn = ""
         Case mzEmail: validationReturn = "([\w\-\.]+)@([\w\-\.]+)\.[a-zA-Z]{2,5}"
         Case mzOneDigit: validationReturn = "^\d{1}$"
@@ -386,6 +387,20 @@ Private Sub Class_Initialize()
 End Sub
 
 
+Public Sub Form(frm)
+
+    Set pForm = frm
+    
+    'SET FORM TO THE CENTER OF THE APPLICATION
+    With frm
+        .StartUpPosition = 0
+        .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
+        .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
+    End With
+    
+End Sub
+
+
 '*************************************************************************
 'NOTES:
 ' - FORMATS A TEXTBOX - ALSO ADDS: PLACEHOLDER, BOTTOM BORDER
@@ -397,12 +412,12 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     Dim mz As New Collection
     Dim i As Integer
     Dim lbl As MSForms.Label
-    Dim frm As MSForms.frame
+    Dim frm As MSForms.Frame
     Dim warn As MSForms.Label
     
     
 'TODO: DON'T ASSUME THE TEXTBOX PARENT IS THE FORM... MUST UPDATE
-    Set pForm = txt.Parent
+    'Set pForm = txt.Parent
     
     'ADD NEW CONTROLS TO THE PARENT ELEMENT
     Set lbl = txt.Parent.Controls.Add("Forms.Label.1", "lbl" & txt.name)
@@ -410,13 +425,14 @@ Public Sub TextBox(txt As MSForms.TextBox, placeholder As String, Optional Valid
     Set warn = txt.Parent.Controls.Add("Forms.Label.1", "warn" & txt.name)
     
     'NULL VALUE SO THAT ON FROM THE FORM IN THE EDITOR YOU CAN LABEL EACH TEXTBOX.
-    txt.Value = ""
+    txt.value = ""
     
     '''''''''''''''''''''''''''''''''''''''''
     ' FORMAT TEXTBOX
     '''''''''''''''''''''''''''''''''''''''''
     With txt
         .BackStyle = fmBackStyleTransparent
+        .borderStyle = fmBorderStyleSingle
         .borderStyle = fmBorderStyleNone
     End With
     
@@ -503,7 +519,7 @@ Public Function DropDown(cmb As MSForms.ComboBox)
     
     Dim mz As New Collection
     Dim lbl As MSForms.Label
-    Dim frm As MSForms.frame
+    Dim frm As MSForms.Frame
 
     Set lbl = cmb.Parent.Controls.Add("Forms.Label.1", "lbl" & cmb.name)
     Set frm = cmb.Parent.Controls.Add("Forms.Frame.1", "frm" & cmb.name)
@@ -568,22 +584,41 @@ End Function
 '==============================================================
 ' STYLE AND SET UP A BUTTON
 '==============================================================
-Public Sub Button(btn As MSForms.CommandButton)
+Public Sub Button(btn As MSForms.CommandButton, Optional bgColor As Long = -1, Optional hoverColor As Long = -1, Optional fontColor As Long = -1)
     
     Dim mz As New Collection
     
     ArrayIncDim mzEvents
-    With btn
-        btn.BackColor = mzButtonColor
-        btn.ForeColor = mzWhite
-    End With
     
+    'GET PROPER BACKGROUND COLOR
+    If bgColor > -1 Then
+        btn.BackColor = bgColor
+        mz.Add bgColor, "bgColor"
+    Else
+        btn.BackColor = mzButtonColor
+        mz.Add mzButtonColor, "bgColor"
+    End If
+    
+    
+    'GET PROPER HOVER COLOR
+    If hoverColor > -1 Then
+        mz.Add hoverColor, "hoverColor"
+    Else
+        mz.Add mzButtonHoverColor, "hoverColor"
+    End If
+    
+    'GET FONT COLOR
+    If fontColor > -1 Then
+        btn.ForeColor = fontColor
+    Else
+        btn.ForeColor = mzWhite
+    End If
     
     Set mzEvents(UBound(mzEvents, 1)).mz = Me
     Set mzEvents(UBound(mzEvents, 1)).btn = btn
     
     mz.Add btn, "btn"
-    
+
     mzBtnGroup.Add mz, btn.name
     
 End Sub
@@ -592,24 +627,69 @@ Public Sub BtnHover(Optional btnName As String)
     Dim i As Integer
     Dim mz As Collection
     
+    
     DoEvents 'ONLY LOOP IF MOUSE OVER BUTTON
     If onButton = True Then
-        For i = 1 To mzBtnGroup.count
+        For i = 1 To mzBtnGroup.Count
             Set mz = mzBtnGroup(i)
             
             'HOVER
             If mz("btn").name = btnName Then
-                mz("btn").BackColor = mzButtonHoverColor
+                mz("btn").BackColor = mz("hoverColor")
             
             'DEFAULT
             Else
-                mz("btn").BackColor = mzButtonColor
+                mz("btn").BackColor = mz("bgColor")
             End If
             
         Next i
     End If
     
 End Sub
+'Public Sub Button(btn As MSForms.CommandButton, Optional mainColor As Long, Optional hoverColor As Long, Optional fgColor As Long)
+'
+'    Dim mz As New Collection
+'
+'    ArrayIncDim mzEvents
+'
+'    With btn
+'        btn.BackColor = mzButtonColor
+'        btn.ForeColor = mzWhite
+'    End With
+'
+'
+'    Set mzEvents(UBound(mzEvents, 1)).mz = Me
+'    Set mzEvents(UBound(mzEvents, 1)).btn = btn
+'
+'    mz.Add btn, "btn"
+'
+'    mzBtnGroup.Add mz, btn.name
+'
+'End Sub
+'Public Sub BtnHover(Optional btnName As String)
+'
+'    Dim i As Integer
+'    Dim mz As Collection
+'
+'
+'    DoEvents 'ONLY LOOP IF MOUSE OVER BUTTON
+'    If onButton = True Then
+'        For i = 1 To mzBtnGroup.Count
+'            Set mz = mzBtnGroup(i)
+'
+'            'HOVER
+'            If mz("btn").name = btnName Then
+'                mz("btn").BackColor = mzButtonHoverColor
+'
+'            'DEFAULT
+'            Else
+'                mz("btn").BackColor = mzButtonColor
+'            End If
+'
+'        Next i
+'    End If
+'
+'End Sub
 
 '============================================================================================
 ' SETTING FOCUS TO A TEXTBOX - CALLS FOR ANIMATIONS, AS WELL AS DOUBLE CHECKS FORMATING
@@ -626,7 +706,7 @@ Public Sub setFocus(txt As String)
     'IN CASE TEXBOX IS NOT ENABLED
     On Error GoTo catch
     
-    For i = 1 To mzTxtGroup.count
+    For i = 1 To mzTxtGroup.Count
         Set mz = mzTxtGroup(i)
         
         If mz("txt").name = txt Then
@@ -646,7 +726,7 @@ Public Sub setFocus(txt As String)
                 
             End If
             
-        ElseIf mz("txt").Value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").name <> txt Then
+        ElseIf mz("txt").value = "" And mz("lbl").Top < mz("txt").Top And mz("txt").name <> txt Then
             
             'ADD TO LOOSE FOUCUS GROUP
             obj.Add mz("lbl")
@@ -664,7 +744,7 @@ Public Sub setFocus(txt As String)
         
     Next i
     
-    If obj.count > 0 Then
+    If obj.Count > 0 Then
         animation obj, Properties, increment, mzFramesPerSec, mzAnimationSec
     End If
     
@@ -683,13 +763,13 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
     
     Dim i As Integer
     Dim txt As MSForms.TextBox
-    Dim frm As MSForms.frame
+    Dim frm As MSForms.Frame
     Dim lbl As MSForms.Label
     Dim val As String
     
     
     'CHECK EACH TEXTBOX
-    For i = 1 To mzTxtGroup.count
+    For i = 1 To mzTxtGroup.Count
         
         On Error GoTo Nxt
         Set txt = mzTxtGroup(i)("txt")
@@ -704,10 +784,10 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
             lbl.Font.SIZE = txt.Font.SIZE - mzFontSizeChange
             lbl.ForeColor = mzFocusColor
             frm.Height = 2
-            If txt.Value = "" Then frm.BackColor = mzFocusColor
+            If txt.value = "" Then frm.BackColor = mzFocusColor
             
             
-        ElseIf txt.Value = "" Then
+        ElseIf txt.value = "" Then
             lbl.Top = txt.Top
             lbl.Font.SIZE = txt.Font.SIZE
             lbl.ForeColor = mzPlaceholderColor
@@ -725,9 +805,9 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
             lbl.ForeColor = mzPlaceholderColor
             
             
-            If val <> "" And Trim(txt.Value) <> "" And liveValidation Then
+            If val <> "" And Trim(txt.value) <> "" And liveValidation Then
             'CHECK TO SEE IF IT IS OK TO VALIDATE
-                If regularExpressionExists(Trim(txt.Value), val) = True Then
+                If regularExpressionExists(Trim(txt.value), val) = True Then
                     frm.BackColor = mzSuccessColor 'VALID
                     mzTxtGroup(i)("warn").Caption = ""
                 Else
@@ -748,9 +828,10 @@ Public Function checkFormat(Optional curTxtName As String) As Boolean
         
         Else
             If txt.name = curTxtName Then
-                frm.BackColor = mzBorderColor
-            Else
                 frm.BackColor = mzFocusColor
+                
+            Else
+                frm.BackColor = mzBorderColor
             End If
             
             mzTxtGroup(i)("warn").Caption = ""
@@ -764,6 +845,7 @@ Nxt:
 End Function
 
 
+
 '==========================================================================================
 ' VALIDATES ALL THE FIEDLS THAT HAD A REG EXPRESSION PASSED IN IT
 '==========================================================================================
@@ -771,7 +853,7 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
 
     Dim i As Integer
     Dim txt As MSForms.TextBox
-    Dim frm As MSForms.frame
+    Dim frm As MSForms.Frame
     Dim cmb As MSForms.ComboBox
     Dim val As String
     Dim visited As Boolean
@@ -780,18 +862,18 @@ Public Function Validate(Optional markEmpty As Boolean) As Boolean
     Validate = True
     
     'VALIDATE TEXTBOX GROUP
-    For i = 1 To mzTxtGroup.count
+    For i = 1 To mzTxtGroup.Count
     
         Set txt = mzTxtGroup(i)("txt")
         Set frm = mzTxtGroup(i)("frm")
         val = mzTxtGroup(i)("val")
         
-        If txt.Value <> "" Or markEmpty = True Then
+        If txt.value <> "" Or markEmpty = True Then
         
         If val <> "" Then
 
                 'VALIDATE
-                If regularExpressionExists(Trim(txt.Value), val) = True Then
+                If regularExpressionExists(Trim(txt.value), val) = True Then
                     frm.BackColor = mzSuccessColor 'VALID
                     mzTxtGroup(i)("warn").Caption = ""
                 Else
@@ -811,14 +893,14 @@ Nxt:
     Next i
     
     'VALIDATE COMBOBOX GROUP
-    For i = 1 To mzCmbGroup.count
+    For i = 1 To mzCmbGroup.Count
         
         Set cmb = mzCmbGroup(i)("cmb")
         Set frm = mzCmbGroup(i)("frm")
         visited = mzCmbGroup(i)("visited")
         
         If visited = True Or markEmpty = True Then
-            If cmb.Value <> "" Then
+            If cmb.value <> "" Then
                 frm.BackColor = mzSuccessColor
             Else
                 frm.BackColor = mzWarningColor
@@ -838,8 +920,8 @@ sec As Double)
     
     'Transition obj, arr, 13, 0.2, Inc
     Dim i As Integer
-    Dim N As Integer
-    Dim currentValue As Double
+    Dim n As Integer
+    Dim CurrentValue As Double
     Dim obj As Variant
     Dim objProperty As Variant
     Dim increment As Variant
@@ -860,17 +942,17 @@ sec As Double)
         DoEvents
         
         'LOOP EACH CONTROL AND INCREMENT ACCORDINGLY
-        For N = LBound(obj, 1) To UBound(obj, 1)
+        For n = LBound(obj, 1) To UBound(obj, 1)
         
             'GET CURRENTVALUE
-            currentValue = CallByName(obj(N), objProperty(N), VbGet)
+            CurrentValue = CallByName(obj(n), objProperty(n), VbGet)
             
             'INCREMENT PROPERTY VALUE
-            CallByName obj(N), objProperty(N), VbLet, currentValue + increment(N) / framesPerSec
+            CallByName obj(n), objProperty(n), VbLet, CurrentValue + increment(n) / framesPerSec
             
-            Counter = Counter + (increment(N) / framesPerSec)
+            Counter = Counter + (increment(n) / framesPerSec)
             
-        Next N
+        Next n
         
         'API SLEEP FUNCTION (MILLISECONDS)
         Sleep sec
@@ -895,11 +977,11 @@ Public Sub resetForm()
         
     Dim i As Integer
     
-    For i = 1 To mzTxtGroup.count
-        mzTxtGroup(i)("txt").Value = ""
+    For i = 1 To mzTxtGroup.Count
+        mzTxtGroup(i)("txt").value = ""
     Next i
     
-    For i = 1 To mzCmbGroup.count
+    For i = 1 To mzCmbGroup.Count
         'mzCmbGroup(i)("cmb").value = Null
         mzCmbGroup(i)("cmb").ListIndex = 0
         mzCmbGroup(i)("frm").Height = 1
@@ -909,30 +991,30 @@ Public Sub resetForm()
 
 End Sub
 
-Public Sub toast(s As String, mil As Long, form As MSForms.UserForm, bgColor As Long)
+
+Public Sub toast(s As String, mil As Long, Form As MSForms.UserForm, bgColor As Long)
 
     Dim txt As MSForms.TextBox
-    Dim L As Long
+    Dim l As Long
     Static running As Boolean
     
     If running = False Then
         running = True
     
-        Set txt = form.Controls.Add("Forms.Textbox.1", "toast" & s)
+        Set txt = Form.Controls.Add("Forms.Textbox.1", "toast" & s)
         
         DoEvents
         With txt
             
             .AutoSize = True
             .SpecialEffect = fmSpecialEffectFlat
-            .Value = s
+            .value = s
             .MultiLine = True
             .BackColor = bgColor
             .ForeColor = mzWhite
             .Font.SIZE = 14
-            .Left = (form.InsideWidth / 1.1) - .Width
-            .Top = (form.InsideHeight / 6.5) + L
-            
+            .Left = (Form.InsideWidth / 1.1) - .Width
+            .Top = (Form.InsideHeight / 6.5) + l
         End With
         
         animation txt, "top", -35, 7, 0.1
@@ -940,23 +1022,12 @@ Public Sub toast(s As String, mil As Long, form As MSForms.UserForm, bgColor As 
         Sleep mil
         
         animation txt, "top", -35, 7, 0.1
-        form.Controls.Remove txt.name
+        Form.Controls.Remove txt.name
         
         running = False
    
     End If
     
-End Sub
-
-
-Public Sub CenterFormToApplication(form)
-
-    With form
-        .StartUpPosition = 0
-        .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
-        .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
-    End With
-
 End Sub
 
 Private Function ArrayIncDim(Arr As Variant) As Variant
@@ -971,7 +1042,6 @@ Private Function ArrayIncDim(Arr As Variant) As Variant
     
 End Function
 
-
 Private Function IsArrayEmpty(Arr As Variant) As Boolean
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' IsArrayEmpty
@@ -985,8 +1055,8 @@ Private Function IsArrayEmpty(Arr As Variant) As Boolean
 ' This function is really the reverse of IsArrayAllocated.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-    Dim lb As Long
-    Dim ub As Long
+    Dim LB As Long
+    Dim UB As Long
 
     Err.Clear
     On Error Resume Next
@@ -997,7 +1067,7 @@ Private Function IsArrayEmpty(Arr As Variant) As Boolean
 
     ' Attempt to get the UBound of the array. If the array is
     ' unallocated, an error will occur.
-    ub = UBound(Arr, 1)
+    UB = UBound(Arr, 1)
     If (Err.Number <> 0) Then
         IsArrayEmpty = True
     Else
@@ -1012,35 +1082,14 @@ Private Function IsArrayEmpty(Arr As Variant) As Boolean
         ' allocated.
         ''''''''''''''''''''''''''''''''''''''''''
         Err.Clear
-        lb = LBound(Arr)
-        If lb > ub Then
+        LB = LBound(Arr)
+        If LB > UB Then
             IsArrayEmpty = True
         Else
             IsArrayEmpty = False
         End If
     End If
 
-End Function
-
-Private Function regularExpressionExists(TestValue As String, Pattern As String) As Boolean
-    
-    Dim regEx As Object
-    Dim match As Object
-    
-    'CREATE OBJECT
-    Set regEx = CreateObject("vbscript.regexp")
-    
-    'SET PARAMETERS FOR REGULAR EXPRESSION
-    With regEx
-        .Global = True 'TRUE MEANS IT WILL LOOK FOR ALL MATCHES, FALSE FINDS FIRST ONLY
-        .MultiLine = True
-        .IgnoreCase = True
-        .Pattern = Pattern 'SET THE PATTERN THAT WAS PASSED IN
-    End With
-    
-    regularExpressionExists = regEx.Test(TestValue)
-    Set regEx = Nothing
-    
 End Function
 
 '==================================================
@@ -1053,7 +1102,7 @@ Private Function cArray(val As Variant) As Variant
     Select Case TypeName(val)
     
         Case "Collection":
-            For i = 1 To val.count
+            For i = 1 To val.Count
                 ArrayPush cArray, val(i)
             Next i
         
@@ -1075,28 +1124,49 @@ End Function
 '==============================================================================================
 ' ADDS ELEMENT TO THE END OF A 1 DIM ARRAY - RETURNS NEW LENGHT OF ARRAY **[SINGLE DIMENSION]
 '==============================================================================================
-Private Function ArrayPush(ByRef Arr As Variant, Value As Variant) As Long
+Private Function ArrayPush(ByRef Arr As Variant, value As Variant) As Long
     
     If IsArrayEmpty(Arr) Then
         ReDim Arr(0)
         
-        If IsObject(Value) Then
-            Set Arr(0) = Value
+        If IsObject(value) Then
+            Set Arr(0) = value
         Else
-            Arr(0) = Value
+            Arr(0) = value
         End If
         
     Else
         ReDim Preserve Arr(LBound(Arr, 1) To UBound(Arr, 1) + 1)
         
-        If IsObject(Value) Then
-            Set Arr(UBound(Arr, 1)) = Value
+        If IsObject(value) Then
+            Set Arr(UBound(Arr, 1)) = value
         Else
-            Arr(UBound(Arr, 1)) = Value
+            Arr(UBound(Arr, 1)) = value
         End If
     End If
     
     ArrayPush = UBound(Arr, 1)
+    
+End Function
+
+Private Function regularExpressionExists(TestValue As String, Pattern As String) As Boolean
+    
+    Dim regEx As Object
+    Dim match As Object
+    
+    'CREATE OBJECT
+    Set regEx = CreateObject("vbscript.regexp")
+    
+    'SET PARAMETERS FOR REGULAR EXPRESSION
+    With regEx
+        .Global = True 'TRUE MEANS IT WILL LOOK FOR ALL MATCHES, FALSE FINDS FIRST ONLY
+        .MultiLine = True
+        .IgnoreCase = True
+        .Pattern = Pattern 'SET THE PATTERN THAT WAS PASSED IN
+    End With
+    
+    regularExpressionExists = regEx.test(TestValue)
+    Set regEx = Nothing
     
 End Function
 

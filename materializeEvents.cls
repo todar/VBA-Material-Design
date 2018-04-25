@@ -22,7 +22,7 @@ Public WithEvents btn As MSForms.CommandButton
 Attribute btn.VB_VarHelpID = -1
 Public WithEvents cmb As MSForms.ComboBox
 Attribute cmb.VB_VarHelpID = -1
-Public WithEvents frm As MSForms.frame
+Public WithEvents frm As MSForms.Frame
 Attribute frm.VB_VarHelpID = -1
 
 
@@ -92,7 +92,7 @@ End Sub
 Private Sub cmb_Change()
     Dim ctrl As MSForms.Control
     
-    If cmb.Value <> "" Then
+    If cmb.value <> "" Then
         For Each ctrl In cmb.Parent.Controls
             If ctrl.tabIndex = cmb.tabIndex + 1 Then
                 ctrl.setFocus
