@@ -247,5 +247,7 @@ Public Enum mzColors
     mzGreyDarken2 = 6381921
     mzGreyDarken3 = 4342338
     mzGreyDarken4 = 2171169
+    mzWhite = 16777215
+    mzblack = 0
 
 End Enum
