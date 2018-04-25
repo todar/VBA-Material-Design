@@ -1,13 +1,8 @@
-# VBA-Materialize (Currently in build status)
-
-![Codeship](https://img.shields.io/codeship/d6c1ddd0-16a3-0132-5f85-2e35c05e22b1.svg)
-[![license](https://img.shields.io/github/license/electron-userland/electron-forge.svg)](https://github.com/todar/VBA-Materialize/blob/master/LICENSE)
+# VBA-Materialize 
 
 Two Class modules that are used to format a VBA Userform in a similar style as materialize css. 
 
 ![materialize](https://github.com/todar/VBA-Materialize/blob/master/materialize.jpeg "Userform Image")
-
-
 
 Example calling the class module from a userform:
 
